@@ -1,0 +1,28 @@
+#description: script to encrypt a string using a certificate then decrypt the string as a POC
+#language: powershell
+#author: Ben Williamson
+
+$string = "My secret string"
+$certThumbprint = "My certificate thumbprint"
+$cert = Get-ChildItem -Path "Cert:\LocalMachine\My" | Where-Object {$_.Thumbprint -eq $certThumbprint}
+
+# Get the public key from the certificate
+$publicKey = $cert.PublicKey.Key
+
+# Encrypt the string using the public key
+$rsa = New-Object System.Security.Cryptography.RSACryptoServiceProvider
+$rsa.ImportParameters($publicKey.ExportParameters($false))
+$encryptedBytes = $rsa.Encrypt([System.Text.Encoding]::UTF8.GetBytes($string), $true)
+$encryptedString = [System.Convert]::ToBase64String($encryptedBytes)
+
+# Decrypt the string using the certificate's private key
+$privateKey = $cert.PrivateKey
+$rsa = New-Object System.Security.Cryptography.RSACryptoServiceProvider
+$rsa.ImportParameters($privateKey.ExportParameters($true))
+$decryptedBytes = $rsa.Decrypt([System.Convert]::FromBase64String($encryptedString), $true)
+$decryptedString = [System.Text.Encoding]::UTF8.GetString($decryptedBytes)
+
+# Output the original string, encrypted string, and decrypted string
+Write-Output "Original String: $string"
+Write-Output "Encrypted String: $encryptedString"
+Write-Output "Decrypted String: $decryptedString"
